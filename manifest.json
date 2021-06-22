@@ -1,0 +1,11 @@
+{
+    "domain": "lms_tts_notify",
+    "name": "LMS TTS Notify",
+    "documentation": "https://github.com/home-assistant",
+    "dependencies": ["media_player", "squeezebox"],
+    "codeowners": ["@floris-b"],
+    "requirements": [],
+    "after_dependencies": ["media_player", "squuezebox"],
+    "iot_class": "local_polling",
+    "version": "0.2.0"
+  }
