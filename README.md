@@ -42,29 +42,29 @@ Please note that the `tts_service` parameter, must match the `service_name` defi
 ### CONFIGURATION VARIABLES & SERVICE OPTIONS
 ___
 
-**name**: `string` | REQUIRED | CONFIG
+#### **name**: `string` | REQUIRED | CONFIG
 The name of the notify service
 
-**tts_service**: `string` | REQUIRED | CONFIG
+#### **tts_service**: `string` | REQUIRED | CONFIG
 The service_name of a TTS platform
 
-**media_player**: `string` | REQUIRED | CONFIG & SERVICE QUEUE 
+#### ***media_player**: `string` | REQUIRED | CONFIG & SERVICE QUEUE 
 The entity_id of a LMS media_player (single or list for service queue)
 
-**device_group**: `string` | REQUIRED | CONFIG | (optional) | SERVICE QUEUE & SERVICE NOTIFY
+#### **device_group**: `string` | REQUIRED | CONFIG | (optional) | SERVICE QUEUE & SERVICE NOTIFY
 Specify which entity_id to track. Messages are not played when state != `home`
 Can be any entities/groups when it has a `home` state 
 
-**volume**: `float` (optional) | CONFIG & SERVICE QUEUE & SERVICE NOTIFY
+#### **volume**: `float` (optional) | CONFIG & SERVICE QUEUE & SERVICE NOTIFY
 Default volume to play the alert_sound and message
 
-**alert_sound**: `string` (optional) | CONFIG & SERVICE QUEUE & SERVICE NOTIFY
+#### **alert_sound**: `string` (optional) | CONFIG & SERVICE QUEUE & SERVICE NOTIFY
 Default name of the playlist in LMS to play before the message
 
-**repeat**: `number` (optional) | CONFIG & SERVICE QUEUE & SERVICE NOTIFY
+#### **repeat**: `number` (optional) | CONFIG & SERVICE QUEUE & SERVICE NOTIFY
 Default value to repeat the message
 
-**force_play**: `boolean` | SERVICE QUEUE & SERVICE NOTIFY
+#### **force_play**: `boolean` | SERVICE QUEUE & SERVICE NOTIFY
 Skip check `device_group` state is `home` 
 
 ### SERVICE QUEUE
