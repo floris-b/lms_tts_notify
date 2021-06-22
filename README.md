@@ -48,7 +48,7 @@ The name of the notify service
 #### **tts_service**: `string` | REQUIRED | CONFIG
 The service_name of a TTS platform
 
-#### ***media_player**: `string` | REQUIRED | CONFIG & SERVICE QUEUE 
+#### **media_player**: `string` | REQUIRED | CONFIG & SERVICE QUEUE 
 The entity_id of a LMS media_player (single or list for service queue)
 
 #### **device_group**: `string` | REQUIRED | CONFIG | (optional) | SERVICE QUEUE & SERVICE NOTIFY
