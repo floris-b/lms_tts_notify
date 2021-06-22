@@ -1,0 +1,8 @@
+{
+    "name": "Logitech Media Server TTS Notify Queue",
+    "country": "BE",
+    "domains": ["media_player"],
+    "content_in_root": true,
+    "iot_class": ["Local Push"],
+    "render_readme": True
+  }

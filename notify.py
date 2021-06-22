@@ -21,6 +21,7 @@ CONF_TTS_SERVICE = "tts_service"
 CONF_REPEAT = "repeat"
 CONF_VOLUME = "volume"
 CONF_ALERT_SOUND = "alert_sound"
+CONF_DEVICE_GROUP = "device_group"
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,6 +30,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Required(CONF_NAME): cv.string,
         vol.Required(CONF_TTS_SERVICE): cv.entity_id,
         vol.Required(CONF_MEDIA_PLAYER): cv.entity_id,
+        vol.Required(CONF_DEVICE_GROUP): cv.entity_id,
         vol.Optional(ATTR_LANGUAGE): cv.string,
         vol.Optional(CONF_REPEAT, default=1): cv.positive_int,
         vol.Optional(CONF_ALERT_SOUND, default=""): cv.string,

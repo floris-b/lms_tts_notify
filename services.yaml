@@ -1,17 +1,17 @@
 queue:
   name: Say an TTS message to a LMS player
-  description: Say something using text-to-speech on a media player.
+  description: Say something using text-to-speech on a media player
   fields:
     entity_id:
       name: Entity
-      description: Name(s) of LMS media player entities.\
+      description: Name(s) of LMS media player entities
       required: true
       selector:
         entity:
           domain: media_player
     message:
       name: Message
-      description: Text to speak on devices.
+      description: Text to speak on devices
       example: "My name is hanna"
       required: true
       selector:
@@ -35,6 +35,16 @@ queue:
           step: 1
     alert_sound:
       name: Alert Sound
-      description: Playlist name to play before the message
+      description: LMS Playlist name to play before the message
       selector:
          text:         
+    force_play:
+      name: Force play
+      description: Play message even when device_group is not home
+      selector:
+        boolean:
+    device_group:
+      name: Device group
+      description: Specify which group/enity to track and only play when home
+      selector:
+        entity:

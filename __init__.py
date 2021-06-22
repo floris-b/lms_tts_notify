@@ -3,6 +3,7 @@ import logging
 from typing import Optional
 
 from homeassistant.const import EVENT_HOMEASSISTANT_START, EVENT_HOMEASSISTANT_STOP
+from homeassistant.components.notify import ATTR_MESSAGE
 from homeassistant.const import CONF_NAME, ATTR_ENTITY_ID
 from homeassistant.core import split_entity_id
 import homeassistant.helpers.config_validation as cv
@@ -20,6 +21,8 @@ CONF_TTS_SERVICE = "tts_service"
 CONF_REPEAT = "repeat"
 CONF_VOLUME = "volume"
 CONF_ALERT_SOUND = "alert_sound"
+CONF_FORCE_PLAY = "force_play"
+CONF_DEVICE_GROUP = "device_group"
 
 ATTR_SYNC_GROUP = "sync_group"
 ATTR_VOLUME = "volume_level"
@@ -30,21 +33,23 @@ GEN_ATTRS = [ATTR_VOLUME, ATTR_SYNC_GROUP, ATTR_POSITION]
 SERVICE_SCHEMA = vol.Schema(
     {
         vol.Required(ATTR_ENTITY_ID): cv.comp_entity_ids,
-        vol.Required("message"): cv.string,
+        vol.Required(ATTR_MESSAGE): cv.string,
         vol.Optional(CONF_REPEAT): cv.positive_int,
         vol.Optional(CONF_ALERT_SOUND): cv.string,
         vol.Optional(CONF_VOLUME): cv.small_float,
+        vol.Optional(CONF_FORCE_PLAY): cv.boolean,
     }
 )
 
 
 async def async_setup(hass, config):
-    """Load configurations."""
+    """Load configurations"""
 
     _LOGGER.debug("The %s component is ready!", DOMAIN)
     queue_listener = {}
     for myconfig in config["notify"]:
         if myconfig["platform"] == "lms_tts_notify":
+            #create queue for each media_player
             _LOGGER.debug("config %s", myconfig)
             media_player = myconfig["media_player"]
 
@@ -58,7 +63,7 @@ async def async_setup(hass, config):
             )
 
     async def async_service_send_message(call):
-        """Call TTS service to speak the notification"""
+        """Forward queue service data to eventbus"""
         _LOGGER.debug("call %s", call.data)
         if isinstance(call.data["entity_id"], list):
             for media_player in call.data["entity_id"]:
@@ -69,6 +74,7 @@ async def async_setup(hass, config):
             hass.bus.async_fire(DOMAIN + "_event", call.data)
 
     async def handle_event(event):
+        """listen to eventbus and put message in media_player queue from notify and queue service"""
         _LOGGER.debug("event %s", event)
         if event.data["entity_id"] in queue_listener:
             queue_listener[event.data["entity_id"]].queue.put(event.data)
@@ -107,17 +113,19 @@ class QueueListener(Thread):
             if event is None:
                 break
 
-            self._message = event["message"].replace("<br>", "")
-            self._repeat = event.get("repeat", self._config.get(CONF_REPEAT))
-            self._volume = event.get("volume", self._config.get(CONF_VOLUME))
+            self._message = event[ATTR_MESSAGE].replace("<br>", "")
+            self._repeat = event.get(CONF_REPEAT, self._config.get(CONF_REPEAT))
+            self._volume = event.get(CONF_VOLUME, self._config.get(CONF_VOLUME))
+            self._device_group = event.get(CONF_DEVICE_GROUP, self._config.get(CONF_DEVICE_GROUP))
             self._alert_sound = event.get(
-                "alert_sound", self._config.get(CONF_ALERT_SOUND)
+                CONF_ALERT_SOUND, self._config.get(CONF_ALERT_SOUND)
             )
-            self.force_play = event.get("force_play", False)
+            self.force_play = event.get(CONF_FORCE_PLAY, False)
 
-            home = self._hass.states.get("group.all_persons").state
+            home = self._hass.states.get(self._device_group).state
             if home == "home" or self.force_play:
                 if not self.skip_save:
+                    #Only save state the first message and skip when there are message in queue
                     _LOGGER.debug("Save playlist and state")
                     self.save_state()
                     service_data = {
@@ -236,10 +244,10 @@ class QueueListener(Thread):
             )
 
     def wait_on_idle(self):
-        # Wait until player is done playing
+        """Wait until player is done playing"""
         time.sleep(1)
         while True:
-            # Force update status of the media player
+            # Force update status of the media_player
             service_data = {"entity_id": self._media_player}
             self._hass.services.call("homeassistant", "update_entity", service_data)
             state = self._hass.states.get(self._media_player).state
@@ -248,7 +256,7 @@ class QueueListener(Thread):
             time.sleep(0.5)
 
     def audio_alert(self):
-        # Plan notify message
+        """Play tts message"""
         self._hass.services.call(
             "media_player", "media_pause", {"entity_id": self._media_player}
         )
