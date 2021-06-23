@@ -23,6 +23,7 @@ CONF_VOLUME = "volume"
 CONF_ALERT_SOUND = "alert_sound"
 CONF_FORCE_PLAY = "force_play"
 CONF_DEVICE_GROUP = "device_group"
+CONF_PAUSE = "pause"
 
 ATTR_SYNC_GROUP = "sync_group"
 ATTR_VOLUME = "volume_level"
@@ -36,9 +37,10 @@ SERVICE_SCHEMA = vol.Schema(
         vol.Required(ATTR_MESSAGE): cv.string,
         vol.Optional(CONF_REPEAT): cv.positive_int,
         vol.Optional(CONF_ALERT_SOUND): cv.string,
-        vol.Optional(CONF_VOLUME): cv.small_float,
+        vol.Optional(CONF_VOLUME): cv.positive_float,
         vol.Optional(CONF_FORCE_PLAY): cv.boolean,
         vol.Optional(CONF_DEVICE_GROUP): cv.entity_id,
+        vol.Optional(CONF_PAUSE): cv.positive_float,
     }
 )
 
@@ -102,6 +104,7 @@ class QueueListener(Thread):
         self._repeat = config.get(CONF_REPEAT)
         self._alert_sound = config.get(CONF_ALERT_SOUND)
         self._volume = config.get(CONF_VOLUME)
+        self._pause = config.get(CONF_PAUSE)
         self._media_player = config[CONF_MEDIA_PLAYER]
         self._config = config
         _, self._tts_service = split_entity_id(config[CONF_TTS_SERVICE])
@@ -119,6 +122,7 @@ class QueueListener(Thread):
             self._message = event[ATTR_MESSAGE].replace("<br>", "")
             self._repeat = event.get(CONF_REPEAT, self._config.get(CONF_REPEAT))
             self._volume = event.get(CONF_VOLUME, self._config.get(CONF_VOLUME))
+            self._pause = event.get(CONF_PAUSE, self._config.get(CONF_PAUSE))
             self._device_group = event.get(CONF_DEVICE_GROUP, self._config.get(CONF_DEVICE_GROUP))
             self._alert_sound = event.get(
                 CONF_ALERT_SOUND, self._config.get(CONF_ALERT_SOUND)
@@ -254,7 +258,7 @@ class QueueListener(Thread):
 
     def wait_on_idle(self):
         """Wait until player is done playing"""
-        time.sleep(1)
+        time.sleep(self._pause)
         while True:
             # Force update status of the media_player
             service_data = {"entity_id": self._media_player}
@@ -262,7 +266,7 @@ class QueueListener(Thread):
             state = self._hass.states.get(self._media_player).state
             if state in ["idle", "paused", "off"]:
                 break
-            time.sleep(0.5)
+            time.sleep(0.2)
 
     def audio_alert(self):
         """Play tts message"""

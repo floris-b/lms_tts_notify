@@ -22,6 +22,7 @@ CONF_REPEAT = "repeat"
 CONF_VOLUME = "volume"
 CONF_ALERT_SOUND = "alert_sound"
 CONF_DEVICE_GROUP = "device_group"
+CONF_PAUSE = "pause"
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,7 +35,8 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Optional(ATTR_LANGUAGE): cv.string,
         vol.Optional(CONF_REPEAT, default=1): cv.positive_int,
         vol.Optional(CONF_ALERT_SOUND, default=""): cv.string,
-        vol.Optional(CONF_VOLUME, default=""): cv.small_float,
+        vol.Optional(CONF_VOLUME, default=""): cv.positive_float,
+        vol.Optional(CONF_PAUSE, default=1.5): cv.positive_float,
     }
 )
 
