@@ -1,5 +1,5 @@
 {
-    "name": "Logitech Media Server TTS Notify Queue",
+    "name": "LMS TTS Notify",
     "country": "BE",
     "domains": ["media_player"],
     "iot_class": ["Local Push"],
