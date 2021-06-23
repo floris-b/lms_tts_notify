@@ -18,7 +18,7 @@ To enable this platform in your installation, consider the following example usi
 
 Copy this folder to `<config_dir>/custom_components/lms_tts_notify/`
 
-Or add a [custom repository](https://hacs.xyz/docs/faq/custom_repositories) in HACS: `https://github.com/floris-b/lms_tts_notify/tree/master`
+Or add a [custom repository](https://hacs.xyz/docs/faq/custom_repositories) in HACS: `https://github.com/floris-b/lms_tts_notify`
 
 Add the following entry in your `configuration.yaml`:
 
