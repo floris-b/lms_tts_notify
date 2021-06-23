@@ -55,7 +55,6 @@ class TTSNotificationService(BaseNotificationService):
 
     async def async_send_message(self, message="", **kwargs):
         """Call TTS service to speak the notification."""
-        _LOGGER.debug("'%s' on %s with kwargs %s", message, self._media_player, kwargs)
         if kwargs["data"]:
             self.hass.bus.async_fire(
                 DOMAIN + "_event",

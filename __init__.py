@@ -38,6 +38,7 @@ SERVICE_SCHEMA = vol.Schema(
         vol.Optional(CONF_ALERT_SOUND): cv.string,
         vol.Optional(CONF_VOLUME): cv.small_float,
         vol.Optional(CONF_FORCE_PLAY): cv.boolean,
+        vol.Optional(CONF_DEVICE_GROUP): cv.entity_id,
     }
 )
 
@@ -64,7 +65,7 @@ async def async_setup(hass, config):
 
     async def async_service_send_message(call):
         """Forward queue service data to eventbus"""
-        _LOGGER.debug("call %s", call.data)
+        #_LOGGER.debug("call %s", call.data)
         if isinstance(call.data["entity_id"], list):
             for media_player in call.data["entity_id"]:
                 data = dict(call.data)
@@ -74,10 +75,12 @@ async def async_setup(hass, config):
             hass.bus.async_fire(DOMAIN + "_event", call.data)
 
     async def handle_event(event):
-        """listen to eventbus and put message in media_player queue from notify and queue service"""
-        _LOGGER.debug("event %s", event)
+        """listen to event bus and put message in media_player queue from notify and queue service"""
+        _LOGGER.debug("Received on event bus: %s", event.data)
         if event.data["entity_id"] in queue_listener:
             queue_listener[event.data["entity_id"]].queue.put(event.data)
+        else:
+            _LOGGER.warn("LMS player not configured in %s : %s", DOMAIN, event.data["entity_id"])
 
     hass.bus.async_listen(DOMAIN + "_event", handle_event)
 
@@ -126,18 +129,17 @@ class QueueListener(Thread):
             if home == "home" or self.force_play:
                 if not self.skip_save:
                     #Only save state the first message and skip when there are message in queue
-                    _LOGGER.debug("Save playlist and state")
                     self.save_state()
+                    _LOGGER.debug("Save playlist: %s", self._media_player )
                     service_data = {
                         "entity_id": self._media_player,
                         "command": "playlist",
                         "parameters": ["save", "Save-" + self._media_player],
                     }
                     self._hass.services.call("squeezebox", "call_method", service_data)
-                _LOGGER.debug("playing event %s", event)
                 self.audio_alert()
                 if self._queue.empty():
-                    _LOGGER.debug("Restore playlist and state")
+                    _LOGGER.debug("Restore playlist: %s", self._media_player)
                     service_data = {
                         "entity_id": self._media_player,
                         "command": "playlist",
@@ -148,6 +150,8 @@ class QueueListener(Thread):
                     self.skip_save = False
                 else:
                     self.skip_save = True
+            else:
+                _LOGGER.debug("Not playing: %s state != \'home\' and not force_play", self._device_group) 
 
     @property
     def queue(self):
@@ -178,7 +182,7 @@ class QueueListener(Thread):
             _LOGGER.debug("Could not get state of {}.".format(self._media_player))
         else:
             attributes = {}
-            if cur_state.state == "on" or cur_state.state == "playing":
+            if cur_state.state in ["on", "playing", "idle", "paused"]:
                 for attr in GEN_ATTRS:
                     if attr in cur_state.attributes:
                         attributes[attr] = cur_state.attributes[attr]
@@ -190,16 +194,21 @@ class QueueListener(Thread):
                                     "unsync",
                                     {"entity_id": self._media_player},
                                 )
+                            else:
+                                del attributes[attr]
+            _LOGGER.debug("Save state: %s", self._media_player)
             self.state = {"state": cur_state.state, "attributes": attributes}
+            
 
     def restore_state(self):
         """Restore state of media player"""
         if self.state["state"] == None:
             _LOGGER.debug("No saved state for {}.".format(self._media_player))
         else:
+            _LOGGER.debug("Restore state: %s : %s", self._media_player, self.state)
             turn_on = self.state["state"]
             service_data = {"entity_id": self._media_player}
-            if turn_on:
+            if turn_on in ['idle', 'playing', 'paused']:
                 if "volume_level" in self.state["attributes"]:
                     volume = self.state["attributes"]["volume_level"]
                     self._hass.services.call(
@@ -238,7 +247,7 @@ class QueueListener(Thread):
             self._hass.services.call(
                 "media_player",
                 "turn_on"
-                if (turn_on == "playing") or (turn_on == "on")
+                if turn_on == "playing"
                 else "turn_off",
                 service_data,
             )
@@ -261,7 +270,7 @@ class QueueListener(Thread):
             "media_player", "media_pause", {"entity_id": self._media_player}
         )
         time.sleep(0.5)
-
+        _LOGGER.debug("Playing message \"%s\" : %s", self._message, self._media_player)
         # Set alert volume
         if self._volume:
             service_data = {
