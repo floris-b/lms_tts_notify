@@ -1,6 +1,5 @@
 {
     "name": "LMS TTS Notify",
-    "country": "BE",
     "domains": ["media_player"],
-    "iot_class": ["Local Push"],
+    "iot_class": ["Local Push"]
   }
