@@ -58,7 +58,7 @@ Can be any entities/groups when it has a `home` state
 #### **volume**: `float` (optional) | CONFIG & SERVICE QUEUE & SERVICE NOTIFY
 Default volume to play the alert_sound and message
 
-#### **pauze**: `float` (optional, default=1.5) | CONFIG 
+#### **pause**: `float` (optional, default=1.5) | CONFIG 
 Seconds to pause before checking if the player is idle. 
 If the alert sound or message is cut off set this to a higher value
 
