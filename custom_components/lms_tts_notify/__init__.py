@@ -181,6 +181,7 @@ class QueueListener(Thread):
         """Save state of media_player"""
         service_data = {"entity_id": self._media_player}
         self._hass.services.call("homeassistant", "update_entity", service_data)
+        time.sleep(0.2)
         cur_state = self._hass.states.get(self._media_player)
         if cur_state is None:
             _LOGGER.debug("Could not get state of {}.".format(self._media_player))
@@ -247,29 +248,28 @@ class QueueListener(Thread):
                             "seek_position": media_position,
                         },
                     )
-
-            self._hass.services.call("homeassistant", "update_entity", service_data)
-            if turn_on in ["off", "paused", "idle" ]:
+            
+            if turn_on != "playing":
                 self._hass.services.call( "media_player", "turn_off", service_data )
 
     def wait_on_idle(self):
         """Wait until player is done playing"""
-        time.sleep(self._pause)
         while True:
             # Force update status of the media_player
             service_data = {"entity_id": self._media_player}
             self._hass.services.call("homeassistant", "update_entity", service_data)
+            time.sleep(0.2)
             state = self._hass.states.get(self._media_player).state
             if state in ["idle", "paused", "off"]:
                 break
-            time.sleep(0.2)
+            
 
     def audio_alert(self):
         """Play tts message"""
         self._hass.services.call(
             "media_player", "media_pause", {"entity_id": self._media_player}
         )
-        time.sleep(0.5)
+        time.sleep(self._pause)
         _LOGGER.debug("Playing message \"%s\" : %s", self._message, self._media_player)
         # Set alert volume
         if self._volume:
@@ -289,8 +289,12 @@ class QueueListener(Thread):
                     "parameters": ["resume", self._alert_sound],
                 }
                 self._hass.services.call("squeezebox", "call_method", service_data)
+                time.sleep(self._pause)
                 self.wait_on_idle()
+                
             # Play message
             service_data = {"entity_id": self._media_player, "message": self._message}
             self._hass.services.call("tts", self._tts_service, service_data)
+            time.sleep(self._pause)
             self.wait_on_idle()
+

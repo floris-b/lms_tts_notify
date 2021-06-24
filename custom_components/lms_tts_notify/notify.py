@@ -36,7 +36,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Optional(CONF_REPEAT, default=1): cv.positive_int,
         vol.Optional(CONF_ALERT_SOUND, default=""): cv.string,
         vol.Optional(CONF_VOLUME, default=""): cv.positive_float,
-        vol.Optional(CONF_PAUSE, default=1.5): cv.positive_float,
+        vol.Optional(CONF_PAUSE, default=0.5): cv.positive_float,
     }
 )
 
