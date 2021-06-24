@@ -58,9 +58,8 @@ Can be any entities/groups when it has a `home` state
 #### **volume**: `float` (optional) | CONFIG & SERVICE QUEUE & SERVICE NOTIFY
 Default volume to play the alert_sound and message
 
-#### **pause**: `float` (optional, default=1.5) | CONFIG 
-Seconds to pause before checking if the player is idle. 
-If the alert sound or message is cut off set this to a higher value
+#### **pause**: `float` (optional, default=0.5) | CONFIG 
+Seconds to pause before and after alert sound and after tts message
 
 #### **alert_sound**: `string` (optional) | CONFIG & SERVICE QUEUE & SERVICE NOTIFY
 Default name of the playlist in LMS to play before the message
