@@ -248,13 +248,9 @@ class QueueListener(Thread):
                         },
                     )
 
-            self._hass.services.call(
-                "media_player",
-                "turn_on"
-                if turn_on == "playing"
-                else "turn_off",
-                service_data,
-            )
+            self._hass.services.call("homeassistant", "update_entity", service_data)
+            if turn_on in ["off", "paused", "idle" ]:
+                self._hass.services.call( "media_player", "turn_off", service_data )
 
     def wait_on_idle(self):
         """Wait until player is done playing"""
