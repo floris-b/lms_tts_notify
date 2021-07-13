@@ -68,10 +68,9 @@ async def async_setup(hass, config):
             hass.bus.async_fire(DOMAIN + "_event", call.data)
 
     async def handle_event(event):
-        """listen to event bus and put message in media_player queue from notify and queue service"""
+        """listen to event bus and put message in coordinator queue from notify and queue service"""
         _LOGGER.debug("Received on event bus: %s", event.data)
         if event.data["entity_id"] in coordinator._queue_listener:
-            #queue_listener[event.data["entity_id"]].queue.put(event.data)
             coordinator.queue.put(event.data)
         else:
             _LOGGER.warn("LMS player not configured in %s : %s", DOMAIN, event.data["entity_id"])
@@ -85,7 +84,7 @@ async def async_setup(hass, config):
     return True
 
 class Coordinator(Thread):
-    """Coordinator for saving and restore state, recieving tts messages and dispatching to media_players queues"""
+    """Coordinator for save and restore state sync_groups, recieving tts messages and dispatching to media_players queues"""
     def __init__(self, hass, config):
         super().__init__()
         self._name = "Coordinator"
@@ -94,7 +93,7 @@ class Coordinator(Thread):
         self._queue_listener = {}
         for myconfig in config["notify"]:
             if myconfig["platform"] == "lms_tts_notify":
-                #create queue for each media_player
+                #create queue and thread for each media_player
                 _LOGGER.debug("config %s", myconfig)
                 media_player = myconfig["media_player"]
 
@@ -126,7 +125,9 @@ class Coordinator(Thread):
                     self.skip_save = True
                     self.save_state()
                     self.save_playlists()
-
+                #unsync player if in sync group
+                if any(event["entity_id"] in sublist for sublist in self.sync_group):
+                    _LOGGER.debug( "UnSync %s", event["entity_id"] )
                     self._hass.services.call(
                         "squeezebox",
                         "unsync",
@@ -136,7 +137,6 @@ class Coordinator(Thread):
                 self._queue_listener[event["entity_id"]].queue.put(event)
                 #keep track of players used
                 self.players.add(event["entity_id"])
-
             else:
                 self.playing = 'waiting'
                 time.sleep(0.2)
@@ -159,18 +159,18 @@ class Coordinator(Thread):
                 elif self._queue_listener[player].status == 'waiting':
                     waiting += 1
             if len(self.players) == waiting:
-                #restore sync groups and playlist of fist active player in sync group
-                for group in self.sync_group:
-                    for player in group:
-                        if self._queue_listener[player].state_save["state"] == 'playing':
-                            self.restore_sync()
-                            self.restore_playlist(player)
-                            break
                 #restore playlist of active players not in sync group
                 for player in self.players:
                     self.restore_state(player)
                     if not any(player in sublist for sublist in self.sync_group) and self._queue_listener[player].state_save["state"] == 'playing':
                         self.restore_playlist(player)
+                #restore sync groups and playlist of first active player in sync group
+                for group in self.sync_group:
+                    for player in group:
+                        if self._queue_listener[player].state_save["state"] == 'playing':
+                            self.restore_sync(group,player)
+                            self.restore_playlist(player)
+                            break
                 return True
         else:
             return False
@@ -214,23 +214,23 @@ class Coordinator(Thread):
             }
             self._hass.services.call("squeezebox", "call_method", service_data)
 
-    def restore_sync(self):
-        for sync in self.sync_group:
-            sync_list = list(sync)
-            if len(sync_list):
-                _LOGGER.debug(
-                    "ReSync %s", sync_list
-                )
-
-                for player in sync_list[1:]:
-                        self._hass.services.call(
-                            "squeezebox",
-                            "sync",
-                            {
-                                "entity_id": sync_list[0],
-                                "other_player": player,
-                            },
-                        )   
+    def restore_sync(self, group, player):
+        #for sync in self.sync_group:
+        sync_list = list(group)
+        #if len(sync_list):
+        _LOGGER.debug(
+            "ReSync %s", sync_list
+        )
+        sync_list.remove(player)
+        for slave in sync_list:
+                self._hass.services.call(
+                    "squeezebox",
+                    "sync",
+                    {
+                        "entity_id": player,
+                        "other_player": slave,
+                    },
+                )   
 
     def save_state(self):
         """Save state of media_player"""
