@@ -168,11 +168,12 @@ class Coordinator(Thread):
                 #restore sync_groups and playlist of first active player in sync group 
                 for group in self.sync_group:
                     for player in group:
-                        if self._queue_listener[player].state_save['state'] == 'playing':
-                            self.restore_sync(group,player)
-                            self.restore_playlist(player)
-                            #self.restore_media_possition(player)
-                            break
+                        if player in self._queue_listener:
+                            if self._queue_listener[player].state_save['state'] == 'playing':
+                                self.restore_sync(group,player)
+                                self.restore_playlist(player)
+                                #self.restore_media_possition(player)
+                                break
                 return True
             else:
                 return False
