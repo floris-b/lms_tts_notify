@@ -27,8 +27,9 @@ CONF_PAUSE = 'pause'
 ATTR_SYNC_GROUP = 'sync_group'
 ATTR_VOLUME = 'volume_level'
 ATTR_POSITION = 'media_position'
+ATTR_QUERY_RESULT = 'query_result'
 
-GEN_ATTRS = [ATTR_VOLUME, ATTR_SYNC_GROUP, ATTR_POSITION]
+GEN_ATTRS = [ATTR_VOLUME, ATTR_SYNC_GROUP, ATTR_POSITION, ATTR_QUERY_RESULT]
 
 SERVICE_SCHEMA = vol.Schema(
     {
@@ -123,6 +124,12 @@ class Coordinator(Thread):
                 if not self.skip_save:
                 # Only save state the first message and skip when there are message in queue or stil playing
                     self.skip_save = True
+                    for player in self._queue_listener:
+                        self._hass.services.call(
+                            'squeezebox',
+                            'call_query',
+                            {'entity_id': player, 'command': 'playlist', 'parameters': ['repeat', "?"]}
+                        )
                     self.save_state()
                     self.save_playlists()
                 # unsync player if in sync group
@@ -133,6 +140,11 @@ class Coordinator(Thread):
                         'unsync',
                         {'entity_id': event['entity_id']},
                     )
+                self._hass.services.call(
+                    'squeezebox',
+                    'call_method',
+                    {'entity_id': event['entity_id'], 'command': 'playlist', 'parameters': ['repeat', 0]}
+                )
                 # send to media_player queue
                 self._queue_listener[event['entity_id']].queue.put(event)
                 # keep track of players used
@@ -271,6 +283,12 @@ class Coordinator(Thread):
         _LOGGER.debug('Restore state: %s -> %s ', player, self._queue_listener[player].state_save)
         turn_on = self._queue_listener[player].state_save['state']
         service_data = {'entity_id': player}
+        if self._queue_listener[player].state_save['attributes']['query_result']['_repeat']:
+            self._hass.services.call(
+                'squeezebox',
+                'call_method',
+                {'entity_id': player, 'command': 'playlist', 'parameters': ['repeat', self._queue_listener[player].state_save['attributes']['query_result']['_repeat']]}
+            )
         if turn_on != 'playing':
             self._hass.services.call('media_player', 'turn_off', service_data)
 

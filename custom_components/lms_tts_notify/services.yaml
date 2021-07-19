@@ -8,6 +8,7 @@ queue:
       required: true
       selector:
         entity:
+          integration: squeezebox
           domain: media_player
     message:
       name: Message
