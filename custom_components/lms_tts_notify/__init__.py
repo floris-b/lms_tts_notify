@@ -283,7 +283,7 @@ class Coordinator(Thread):
         _LOGGER.debug('Restore state: %s -> %s ', player, self._queue_listener[player].state_save)
         turn_on = self._queue_listener[player].state_save['state']
         service_data = {'entity_id': player}
-        if self._queue_listener[player].state_save['attributes']['query_result']['_repeat']:
+        if turn_on != 'off':
             self._hass.services.call(
                 'squeezebox',
                 'call_method',
