@@ -171,13 +171,19 @@ class Coordinator(Thread):
                         self.restore_media_possition(player)
                 #restore sync_groups and playlist of first active player in sync group 
                 for group in self.sync_group:
+                    playing = False
                     for player in group:
-                        if player in self._queue_listener:
-                            if self._queue_listener[player].state_save['state'] == 'playing':
+                        if player in self._queue_listener and player in self.players:
+                            if self._queue_listener[player].state_save['state'] == 'playing' and not playing:
                                 self.restore_sync(group,player)
                                 self.restore_playlist(player)
+                                playing = True
                                 #self.restore_media_possition(player)
                                 break
+                    if playing is False:
+                        self.restore_sync(group,player)
+                        #self.restore_playlist(player)
+
                 return True
             else:
                 return False
@@ -205,7 +211,7 @@ class Coordinator(Thread):
         self.stop()
 
     def restore_playlist(self, player):
-        _LOGGER.debug(' Restore playlist: %s', player)
+        _LOGGER.debug('Restore playlist: %s', player)
         service_data = {
             'entity_id': player,
             'command': 'playlist',
@@ -224,22 +230,44 @@ class Coordinator(Thread):
             self._hass.services.call('squeezebox', 'call_method', service_data)
 
     def restore_sync(self, group, player):
-        # for sync in self.sync_group:
         sync_list = list(group)
-        # if len(sync_list):
-        _LOGGER.debug(
-            'ReSync %s', sync_list
-        )
-        sync_list.remove(player)
-        for slave in sync_list:
+
+        if len(sync_list) == 2:
+            sync_list.remove(player)
+            _LOGGER.debug(
+                'ReSync %s->%s', player, sync_list[0]
+            )
             self._hass.services.call(
                 'squeezebox',
                 'sync',
                 {
                     'entity_id': player,
-                    'other_player': slave,
+                    'other_player': sync_list[0],
                 },
-            )   
+            )  
+        else:
+            masters = [ player for player in sync_list if player not in self.players ]
+            _LOGGER.debug(
+                'Masters %s', masters
+            )
+
+            if masters:
+                master = masters[0]
+            else:
+                master = player
+                self.players.remove(player)
+            for slave in self.players:
+                _LOGGER.debug(
+                    'ReSync %s->%s', master, slave
+                )
+                self._hass.services.call(
+                    'squeezebox',
+                    'sync',
+                    {
+                        'entity_id': master,
+                        'other_player': slave,
+                    },
+                )
 
     def save_state(self):
         '''Save state of media_player'''
@@ -255,23 +283,25 @@ class Coordinator(Thread):
             cur_state = self._hass.states.get(player)
             if cur_state is None:
                 _LOGGER.debug('Could not get state of {}.'.format(player))
+            elif cur_state.state == 'unavailable':
+                attributes = {}
+                attributes[ATTR_SYNC_GROUP] = []
+                attributes['repeat'] = 0
+                self._queue_listener[player].state_save = {'state': cur_state.state, 'attributes': attributes}
             else:
                 attributes = {}
-                if cur_state.state in ['on', 'playing', 'idle', 'paused']:
-                    if ATTR_SYNC_GROUP not in cur_state.attributes:
+                if ATTR_SYNC_GROUP in cur_state.attributes:
+                    if len(cur_state.attributes[ATTR_SYNC_GROUP]):
+                        _LOGGER.debug('Add Sync Group %s', cur_state.attributes[ATTR_SYNC_GROUP])
+                        self.sync_group.add(frozenset(cur_state.attributes[ATTR_SYNC_GROUP]))
+                    else:
                         attributes[ATTR_SYNC_GROUP] = []
-                    for attr in GEN_ATTRS:
-                        if attr in cur_state.attributes:
-                            attributes[attr] = cur_state.attributes[attr]
-                            if attr == ATTR_SYNC_GROUP:
-                                #self._sync_group = cur_state.attributes[attr]
-                                if len(cur_state.attributes[attr]):
-                                    _LOGGER.debug('Add Sync Group %s', cur_state.attributes[attr])
-                                    self.sync_group.add(frozenset(cur_state.attributes[attr]))
-                                else:
-                                    attributes[attr] = []
                 else:
                     attributes[ATTR_SYNC_GROUP] = []
+                if ATTR_VOLUME in cur_state.attributes:
+                    attributes[ATTR_VOLUME] = cur_state.attributes[ATTR_VOLUME]
+                if ATTR_POSITION in cur_state.attributes:
+                    attributes[ATTR_POSITION] = cur_state.attributes[ATTR_POSITION]
 
                 attributes['repeat'] = cur_state.attributes['query_result']['_repeat']
                 # self._hass.services.call(
@@ -314,7 +344,7 @@ class Coordinator(Thread):
 
     def restore_media_possition(self, player):
         '''Restore media position'''
-        _LOGGER.debug('Restore media_possition: %s', player)
+        _LOGGER.debug('Restore media_position: %s', player)
         turn_on = self._queue_listener[player].state_save['state']
         service_data = {'entity_id': player}
         if turn_on in ['on', 'playing', 'idle', 'paused']:      
