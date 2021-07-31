@@ -400,8 +400,8 @@ class QueueListener(Thread):
             )
             self.force_play = event.get(CONF_FORCE_PLAY, False)
 
-            home = self._hass.states.get(self._device_group).state
-            if home == 'home' or self.force_play:
+            home = self._hass.states.get(self._device_group)
+            if not home or home.state == 'home' or self.force_play:
                 self.audio_alert()
                 if self._queue.empty():
                     self.wait_on_finished()
