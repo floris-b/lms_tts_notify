@@ -178,11 +178,10 @@ class Coordinator(Thread):
                                 self.restore_sync(group,player)
                                 self.restore_playlist(player)
                                 playing = True
-                                #self.restore_media_possition(player)
                                 break
                     if playing is False:
                         self.restore_sync(group,player)
-                        #self.restore_playlist(player)
+
 
                 return True
             else:
@@ -233,20 +232,21 @@ class Coordinator(Thread):
         sync_list = list(group)
 
         if len(sync_list) == 2:
-            sync_list.remove(player)
-            _LOGGER.debug(
-                'ReSync %s->%s', player, sync_list[0]
-            )
-            self._hass.services.call(
-                'squeezebox',
-                'sync',
-                {
-                    'entity_id': player,
-                    'other_player': sync_list[0],
-                },
-            )  
+            if any(item in self.players for item in sync_list ):
+                sync_list.remove(player)
+                _LOGGER.debug(
+                    'ReSync %s->%s', player, sync_list[0]
+                )
+                self._hass.services.call(
+                    'squeezebox',
+                    'sync',
+                    {
+                        'entity_id': player,
+                        'other_player': sync_list[0],
+                    },
+                )  
         else:
-            masters = [ player for player in sync_list if player not in self.players ]
+            masters = [ item for item in sync_list if item not in self.players ]
             _LOGGER.debug(
                 'Masters %s', masters
             )
@@ -257,17 +257,18 @@ class Coordinator(Thread):
                 master = player
                 self.players.remove(player)
             for slave in self.players:
-                _LOGGER.debug(
-                    'ReSync %s->%s', master, slave
-                )
-                self._hass.services.call(
-                    'squeezebox',
-                    'sync',
-                    {
-                        'entity_id': master,
-                        'other_player': slave,
-                    },
-                )
+                if slave in sync_list:
+                    _LOGGER.debug(
+                        'ReSync %s->%s', master, slave
+                    )
+                    self._hass.services.call(
+                        'squeezebox',
+                        'sync',
+                        {
+                            'entity_id': master,
+                            'other_player': slave,
+                        },
+                    )
 
     def save_state(self):
         '''Save state of media_player'''
