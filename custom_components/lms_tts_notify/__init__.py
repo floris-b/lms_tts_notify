@@ -33,7 +33,7 @@ GEN_ATTRS = [ATTR_VOLUME, ATTR_SYNC_GROUP, ATTR_POSITION]
 SERVICE_SCHEMA = vol.Schema(
     {
         vol.Required(ATTR_ENTITY_ID): cv.comp_entity_ids,
-        vol.Required(ATTR_MESSAGE): cv.string,
+        vol.Optional(ATTR_MESSAGE): cv.string,
         vol.Optional(CONF_REPEAT): cv.positive_int,
         vol.Optional(CONF_ALERT_SOUND): cv.string,
         vol.Optional(CONF_VOLUME): cv.positive_float,
@@ -391,7 +391,7 @@ class QueueListener(Thread):
             if event is None:
                 break
             self.status = 'playing'
-            self._message = event[ATTR_MESSAGE].replace('<br>', '')
+            self._message = event.get(ATTR_MESSAGE, '').replace('<br>', '')
             self._repeat = event.get(CONF_REPEAT, self._config.get(CONF_REPEAT))
             self._volume = event.get(CONF_VOLUME, self._config.get(CONF_VOLUME))
             self._pause = event.get(CONF_PAUSE, self._config.get(CONF_PAUSE))
@@ -492,7 +492,8 @@ class QueueListener(Thread):
                 self.wait_on_idle()
 
             # Play message
-            service_data = {'entity_id': self._media_player, 'message': self._message}
-            self._hass.services.call('tts', self._tts_service, service_data)
-            time.sleep(self._pause)
+            if self._message:
+                service_data = {'entity_id': self._media_player, 'message': self._message}
+                self._hass.services.call('tts', self._tts_service, service_data)
+                time.sleep(self._pause)
             self.wait_on_idle()
