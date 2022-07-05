@@ -1,5 +1,9 @@
 '''Logitech Squeezebox TTS notify queue.'''
 import logging
+from threading import Thread
+from queue import Queue
+import time
+import voluptuous as vol
 
 from homeassistant.const import EVENT_HOMEASSISTANT_START, EVENT_HOMEASSISTANT_STOP
 from homeassistant.components.notify import ATTR_MESSAGE
@@ -7,10 +11,7 @@ from homeassistant.const import ATTR_ENTITY_ID
 from homeassistant.core import split_entity_id
 import homeassistant.helpers.config_validation as cv
 
-from threading import Thread
-from queue import Queue
-import time
-import voluptuous as vol
+
 
 DOMAIN = 'lms_tts_notify'
 _LOGGER = logging.getLogger(__name__)
@@ -69,10 +70,10 @@ async def async_setup(hass, config):
     async def handle_event(event):
         '''listen to event bus and put message in coordinator queue from notify and queue service'''
         _LOGGER.debug('Received on event bus: %s', event.data)
-        if event.data['entity_id'] in coordinator._queue_listener:
+        if event.data['entity_id'] in coordinator.queue_listener:
             coordinator.queue.put(event.data)
         else:
-            _LOGGER.warn('LMS player not configured in %s : %s', DOMAIN, event.data['entity_id'])
+            _LOGGER.warning('LMS player not configured in %s : %s', DOMAIN, event.data['entity_id'])
 
     hass.bus.async_listen(DOMAIN + '_event', handle_event)
 
@@ -90,31 +91,30 @@ class Coordinator(Thread):
         self._name = 'Coordinator'
         self._hass = hass
         self._queue = Queue()
-        self._queue_listener = {}
+        self.queue_listener = {}
+        self.skip_save = False
+        self.playing = 'idle'
+        self.sync_group = set()
+        self.players = set()
+
         for myconfig in config['notify']:
             if myconfig['platform'] == 'lms_tts_notify':
                 # create queue and thread for each media_player
                 _LOGGER.debug('config %s', myconfig)
                 media_player = myconfig['media_player']
 
-                self._queue_listener[media_player] = QueueListener(hass, myconfig)
+                self.queue_listener[media_player] = QueueListener(hass, myconfig)
 
                 self._hass.bus.async_listen_once(
-                    EVENT_HOMEASSISTANT_START, self._queue_listener[media_player].start_handler
+                    EVENT_HOMEASSISTANT_START, self.queue_listener[media_player].start_handler
                 )
                 self._hass.bus.async_listen_once(
-                    EVENT_HOMEASSISTANT_STOP, self._queue_listener[media_player].stop_handler
+                    EVENT_HOMEASSISTANT_STOP, self.queue_listener[media_player].stop_handler
                 )
 
     def run(self):
         '''Listen to queue events, and put them in media_player queue'''
         _LOGGER.debug('Running Coordinator')
-        self.skip_save = False
-        self.force_play = False
-        self.playing = 'idle'
-        self.sync_group = set()
-        self.players = set()
-
         while True:
             if not self._queue.empty():
                 event = self._queue.get()
@@ -127,18 +127,22 @@ class Coordinator(Thread):
                     self.save_playlists()
                 # unsync players
                 _LOGGER.debug('UnSync %s', event['entity_id'])
+                # self._hass.services.call(
+                #     'squeezebox',
+                #     'unsync',
+                #     {'entity_id': event['entity_id']},
+                #     )
+                self._hass.services.call('media_player', 'unjoin', {'entity_id': event['entity_id']})
+                self._hass.services.call('media_player', 'shuffle_set', {'entity_id': event['entity_id'], 'shuffle': False})
+                self._hass.services.call('media_player', 'repeat_set', {'entity_id': event['entity_id'], 'repeat': 'off'})
+
                 self._hass.services.call(
                     'squeezebox',
-                    'unsync',
-                    {'entity_id': event['entity_id']},
-                    )
-                self._hass.services.call(
-                    'squeezebox',
-                    'call_method',
-                    {'entity_id': event['entity_id'], 'command': 'playlist', 'parameters': ['repeat', 0]}
+                    'call_query',
+                    {'entity_id': list(self.queue_listener), 'command': 'playerpref', 'parameters': ['plugin.dontstopthemusic:provider', "0"]}
                 )
                 # send to media_player queue
-                self._queue_listener[event['entity_id']].queue.put(event)
+                self.queue_listener[event['entity_id']].queue.put(event)
                 # keep track of players used
                 self.players.add(event['entity_id'])
             else:
@@ -148,7 +152,7 @@ class Coordinator(Thread):
                     _LOGGER.debug('Players all done: %s', self.players)
                     self.skip_save = False
                     for player in self.players:
-                        self._queue_listener[player].status = 'idle'
+                        self.queue_listener[player].status = 'idle'
                     self.players = set()
                     self.sync_group = set()
 
@@ -156,25 +160,25 @@ class Coordinator(Thread):
         if len(self.players) > 0:
             waiting = 0
             for player in self.players:
-                if self._queue_listener[player].status == 'done':
+                if self.queue_listener[player].status == 'done':
                     self.restore_volume(player)
-                    self.restore_state(player)     
-                    self._queue_listener[player].status = 'waiting'
+                    self.restore_state(player)
+                    self.queue_listener[player].status = 'waiting'
                     waiting += 1
-                elif self._queue_listener[player].status == 'waiting':
+                elif self.queue_listener[player].status == 'waiting':
                     waiting += 1
             if len(self.players) == waiting:
                 #restore playlist of active players not in sync group
                 for player in self.players:
-                    if not any(player in sublist for sublist in self.sync_group) and self._queue_listener[player].state_save["state"] == 'playing':
+                    if not any(player in sublist for sublist in self.sync_group) and self.queue_listener[player].state_save["state"] == 'playing':
                         self.restore_playlist(player)
                         self.restore_media_possition(player)
-                #restore sync_groups and playlist of first active player in sync group 
+                #restore sync_groups and playlist of first active player in sync group
                 for group in self.sync_group:
                     playing = False
                     for player in group:
-                        if player in self._queue_listener and player in self.players:
-                            if self._queue_listener[player].state_save['state'] == 'playing' and not playing:
+                        if player in self.queue_listener and player in self.players:
+                            if self.queue_listener[player].state_save['state'] == 'playing' and not playing:
                                 self.restore_sync(group,player)
                                 self.restore_playlist(player)
                                 playing = True
@@ -219,7 +223,7 @@ class Coordinator(Thread):
         self._hass.services.call('squeezebox', 'call_method', service_data)
 
     def save_playlists(self):
-        for player, _ in self._queue_listener.items():
+        for player, _ in self.queue_listener.items():
             _LOGGER.debug('Save playlists: %s', player)
             service_data = {
                 'entity_id': player,
@@ -237,14 +241,15 @@ class Coordinator(Thread):
                 _LOGGER.debug(
                     'ReSync %s->%s', player, sync_list[0]
                 )
-                self._hass.services.call(
-                    'squeezebox',
-                    'sync',
-                    {
-                        'entity_id': player,
-                        'other_player': sync_list[0],
-                    },
-                )  
+                self._hass.services.call('media_player', 'join', {'entity_id': player, 'group_members': sync_list[0] })
+                # self._hass.services.call(
+                #     'squeezebox',
+                #     'sync',
+                #     {
+                #         'entity_id': player,
+                #         'other_player': sync_list[0],
+                #     },
+                # )
         else:
             masters = [ item for item in sync_list if item not in self.players ]
             _LOGGER.debug(
@@ -261,23 +266,24 @@ class Coordinator(Thread):
                     _LOGGER.debug(
                         'ReSync %s->%s', master, slave
                     )
-                    self._hass.services.call(
-                        'squeezebox',
-                        'sync',
-                        {
-                            'entity_id': master,
-                            'other_player': slave,
-                        },
-                    )
+                    self._hass.services.call('media_player', 'join', {'entity_id': master, 'group_members': slave })
+                    # self._hass.services.call(
+                    #     'squeezebox',
+                    #     'sync',
+                    #     {
+                    #         'entity_id': master,
+                    #         'other_player': slave,
+                    #     },
+                    # )
 
     def save_state(self):
         '''Save state of media_player'''
         self._hass.services.call(
             'squeezebox',
             'call_query',
-            {'entity_id': list(self._queue_listener), 'command': 'playlist', 'parameters': ['repeat', "?"]}
+            {'entity_id': list(self.queue_listener), 'command': 'playerpref', 'parameters': ['plugin.dontstopthemusic:provider', "?"]}
             )
-        for player, _ in self._queue_listener.items():
+        for player, _ in self.queue_listener.items():
             service_data = {'entity_id': player}
             self._hass.services.call('homeassistant', 'update_entity', service_data)
             time.sleep(0.2)
@@ -287,10 +293,12 @@ class Coordinator(Thread):
             elif cur_state.state == 'unavailable':
                 attributes = {}
                 attributes[ATTR_SYNC_GROUP] = []
-                attributes['repeat'] = 0
-                self._queue_listener[player].state_save = {'state': cur_state.state, 'attributes': attributes}
+                attributes['repeat'] = 'off'
+                attributes['shuffle'] = False
+                attributes['query_result']['_p2'] = 0
+                self.queue_listener[player].state_save = {'state': cur_state.state, 'attributes': attributes}
             else:
-                attributes = {}
+                attributes = cur_state.attributes.copy()
                 if ATTR_SYNC_GROUP in cur_state.attributes:
                     if len(cur_state.attributes[ATTR_SYNC_GROUP]):
                         _LOGGER.debug('Add Sync Group %s', cur_state.attributes[ATTR_SYNC_GROUP])
@@ -299,44 +307,51 @@ class Coordinator(Thread):
                         attributes[ATTR_SYNC_GROUP] = []
                 else:
                     attributes[ATTR_SYNC_GROUP] = []
-                if ATTR_VOLUME in cur_state.attributes:
-                    attributes[ATTR_VOLUME] = cur_state.attributes[ATTR_VOLUME]
-                if ATTR_POSITION in cur_state.attributes:
-                    attributes[ATTR_POSITION] = cur_state.attributes[ATTR_POSITION]
+                # if ATTR_VOLUME in cur_state.attributes:
+                #     attributes[ATTR_VOLUME] = cur_state.attributes[ATTR_VOLUME]
+                # if ATTR_POSITION in cur_state.attributes:
+                #     attributes[ATTR_POSITION] = cur_state.attributes[ATTR_POSITION]
 
-                attributes['repeat'] = cur_state.attributes['query_result']['_repeat']
+                #attributes['repeat'] = cur_state.attributes['query_result']['_repeat']
                 # self._hass.services.call(
                 #         'squeezebox',
                 #         'call_query',
                 #         {'entity_id': player, 'command': 'syncgroups', 'parameters': ["?"]}
                 #     )
                 # cur_state = self._hass.states.get(player)
-                # attributes['sync'] = cur_state.attributes['query_result']['syncgroups_loop']                
+                # attributes['sync'] = cur_state.attributes['query_result']['syncgroups_loop']
 
                 _LOGGER.debug('Save state: %s -> %s', player, {'state': cur_state.state, 'attributes': attributes})
-                self._queue_listener[player].state_save = {'state': cur_state.state, 'attributes': attributes}
+                self.queue_listener[player].state_save = {'state': cur_state.state, 'attributes': attributes}
 
-    def restore_state(self, player, attr=None):
+    def restore_state(self, player):
         '''Restore state'''
-        _LOGGER.debug('Restore state: %s -> %s ', player, self._queue_listener[player].state_save)
-        turn_on = self._queue_listener[player].state_save['state']
-        service_data = {'entity_id': player}
-        self._hass.services.call(
-            'squeezebox',
-            'call_method',
-            {'entity_id': player, 'command': 'playlist', 'parameters': ['repeat', self._queue_listener[player].state_save['attributes']['repeat']]}
-        )
-        if turn_on != 'playing':
-            self._hass.services.call('media_player', 'turn_off', service_data)
+        _LOGGER.debug('Restore state: %s -> %s ', player, self.queue_listener[player].state_save)
+        turn_on = self.queue_listener[player].state_save['state']
+        repeat = self.queue_listener[player].state_save['attributes']['repeat']
+        shuffle = self.queue_listener[player].state_save['attributes']['shuffle']
+        dstm = self.queue_listener[player].state_save['attributes']['query_result']['_p2']
+        # self._hass.services.call(
+        #     'squeezebox',
+        #     'call_method',
+        #     {'entity_id': player, 'command': 'playlist', 'parameters': ['repeat', self.queue_listener[player].state_save['attributes']['repeat']]}
+        # )
+
+        self._hass.services.call('media_player', 'shuffle_set', {'entity_id': player, 'shuffle': shuffle})
+        self._hass.services.call('media_player', 'repeat_set', {'entity_id': player, 'repeat': repeat})
+        self._hass.services.call('squeezebox', 'call_query',
+            {'entity_id': list(self.queue_listener), 'command': 'playerpref', 'parameters': [ 'plugin.dontstopthemusic:provider' , dstm ] })
+
+        if turn_on == 'off':
+            self._hass.services.call('media_player', 'turn_off', {'entity_id': player})
 
     def restore_volume(self, player):
         '''Restore volume'''
         _LOGGER.debug('Restore volume: %s', player)
-        turn_on = self._queue_listener[player].state_save['state']
-        service_data = {'entity_id': player}
+        turn_on = self.queue_listener[player].state_save['state']
         if turn_on in ['on', 'playing', 'idle', 'paused']:
-            if 'volume_level' in self._queue_listener[player].state_save['attributes']:
-                volume = self._queue_listener[player].state_save['attributes']['volume_level']
+            if 'volume_level' in self.queue_listener[player].state_save['attributes']:
+                volume = self.queue_listener[player].state_save['attributes']['volume_level']
                 self._hass.services.call(
                     'media_player',
                     'volume_set',
@@ -346,11 +361,10 @@ class Coordinator(Thread):
     def restore_media_possition(self, player):
         '''Restore media position'''
         _LOGGER.debug('Restore media_position: %s', player)
-        turn_on = self._queue_listener[player].state_save['state']
-        service_data = {'entity_id': player}
+        turn_on = self.queue_listener[player].state_save['state']
         if turn_on in ['on', 'playing', 'idle', 'paused']:      
-            if 'media_position' in self._queue_listener[player].state_save['attributes']:
-                media_position = self._queue_listener[player].state_save['attributes']['media_position']
+            if 'media_position' in self.queue_listener[player].state_save['attributes']:
+                media_position = self.queue_listener[player].state_save['attributes']['media_position']
                 self._hass.services.call(
                     'media_player',
                     'media_seek',
@@ -379,13 +393,16 @@ class QueueListener(Thread):
         _, self._tts_service = split_entity_id(config[CONF_TTS_SERVICE])
         _, name = split_entity_id(self._media_player)
         self._name = name + '_queue'
+        self.skip_save = False
+        self.force_play = False
+        self.status = 'idle'
+        self._message = ''
+        self._device_group = ''
 
     def run(self):
         '''Listen to queue events, and play them to mediaplayer'''
         _LOGGER.debug('Running QueueListener')
-        self.skip_save = False
-        self.force_play = False
-        self.status = 'idle'
+
         while True:
             event = self._queue.get()
             if event is None:
@@ -402,7 +419,11 @@ class QueueListener(Thread):
             self.force_play = event.get(CONF_FORCE_PLAY, False)
 
             home = self._hass.states.get(self._device_group)
-            if not home or home.state == 'home' or self.force_play:
+            try:
+                silent = self._hass.states.get('input_boolean.tts_silent')
+            except:
+                silent = 'off'
+            if ( not home or home.state == 'home' or self.force_play ) and silent.state=='off':
                 self.audio_alert()
                 if self._queue.empty():
                     self.wait_on_finished()
@@ -477,7 +498,7 @@ class QueueListener(Thread):
                 'volume_level': self._volume,
             }
             self._hass.services.call('media_player', 'volume_set', service_data)
-        for step in range(self._repeat):
+        for _ in range(self._repeat):
             # Play alert sound
             if self._alert_sound:
                 # service_data = { 'entity_id': self._media_player, 'media_content_id': self._alert_sound, 'media_content_type': 'music'  }
