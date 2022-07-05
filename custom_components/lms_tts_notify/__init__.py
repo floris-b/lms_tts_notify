@@ -293,9 +293,6 @@ class Coordinator(Thread):
             elif cur_state.state == 'unavailable':
                 attributes = {}
                 attributes[ATTR_SYNC_GROUP] = []
-                attributes['repeat'] = 'off'
-                attributes['shuffle'] = False
-                attributes['query_result']['_p2'] = 0
                 self.queue_listener[player].state_save = {'state': cur_state.state, 'attributes': attributes}
             else:
                 attributes = cur_state.attributes.copy()
@@ -328,9 +325,18 @@ class Coordinator(Thread):
         '''Restore state'''
         _LOGGER.debug('Restore state: %s -> %s ', player, self.queue_listener[player].state_save)
         turn_on = self.queue_listener[player].state_save['state']
-        repeat = self.queue_listener[player].state_save['attributes']['repeat']
-        shuffle = self.queue_listener[player].state_save['attributes']['shuffle']
-        dstm = self.queue_listener[player].state_save['attributes']['query_result']['_p2']
+        try:
+            repeat = self.queue_listener[player].state_save['attributes']['repeat']
+        except:
+            repeat = 'off'
+        try:
+            shuffle = self.queue_listener[player].state_save['attributes']['shuffle']
+        except:
+            shuffle = False
+        try:
+            dstm = self.queue_listener[player].state_save['attributes']['query_result']['_p2']
+        except:
+            dstm = 0
         # self._hass.services.call(
         #     'squeezebox',
         #     'call_method',
