@@ -425,11 +425,7 @@ class QueueListener(Thread):
             self.force_play = event.get(CONF_FORCE_PLAY, False)
 
             home = self._hass.states.get(self._device_group)
-            try:
-                silent = self._hass.states.get('input_boolean.tts_silent')
-            except:
-                silent = 'off'
-            if ( not home or home.state == 'home' or self.force_play ) and silent.state=='off':
+            if not home or home.state == 'home' or self.force_play:
                 self.audio_alert()
                 if self._queue.empty():
                     self.wait_on_finished()
