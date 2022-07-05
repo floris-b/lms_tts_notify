@@ -10,7 +10,7 @@ The LMS Notify TTS platform lets you use the TTS integration Service Say and a L
 
 Default options can be set in the configuration file and/or overridden for each message
 
-In order to use this integration, you must already have a TTS platform installed and configured, and a Logitech Media Server working with the TTS platform.
+In order to use this integration, you must already have a TTS platform installed and configured, and a Logitech Media Server working with the TTS platform. Also, make sure you have playlist directory defined on your LMS settings - resume won't work without working playlist save/resume.
 
 To enable this platform in your installation, consider the following example using google_translate and an example media_player.kitchen.
 
