@@ -1,5 +1,4 @@
 {
     "name": "LMS TTS Notify",
-    "domains": ["media_player"],
-    "iot_class": ["Local Push"]
+    "render_readme": true
   }
