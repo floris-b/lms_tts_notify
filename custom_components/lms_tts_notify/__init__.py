@@ -394,6 +394,7 @@ class QueueListener(Thread):
         self._volume = config.get(CONF_VOLUME)
         self._pause = config.get(CONF_PAUSE)
         self._media_player = config[CONF_MEDIA_PLAYER]
+        self._tts_engine = config.get(ATTR_ENTITY_ID)
         self._config = config
         self._sync_group = []
         _, self._tts_service = split_entity_id(config[CONF_TTS_SERVICE])
@@ -516,7 +517,18 @@ class QueueListener(Thread):
 
             # Play message
             if self._message:
-                service_data = {'entity_id': self._media_player, 'message': self._message}
+                if 'speak' in self._tts_service:
+                    service_data = {
+                        'entity_id': self._tts_engine,
+                        'media_player_entity_id': self._media_player,
+                        'message': self._message,
+                    }
+                else:
+                    service_data = {
+                        ATTR_ENTITY_ID: self._media_player,
+                        'message': self._message,
+                    }
+
                 self._hass.services.call('tts', self._tts_service, service_data)
                 time.sleep(self._pause)
             self.wait_on_idle()
