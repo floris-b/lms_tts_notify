@@ -39,6 +39,8 @@ notify:
 
 Please note that the `tts_service` parameter, must match the `service_name` defined in the TTS integration.
 
+You can use the Assist `tts.speak` service, but it is required to specify the tts engine entity_id.  For example, `entity_id: tts.piper` 
+
 ### CONFIGURATION VARIABLES & SERVICE OPTIONS
 ___
 
@@ -54,6 +56,9 @@ The entity_id of a LMS media_player (single or list for service queue)
 #### **device_group**: `string` | REQUIRED | CONFIG | (optional) | SERVICE QUEUE & SERVICE NOTIFY
 Specify which entity_id to track. Messages are not played when state != `home`
 Can be any entities/groups when it has a `home` state 
+
+#### **entity_id**: `string` | (optional) | CONFIG
+The entity_id of the TTS engine (for TTS service "tts.speak" only)
 
 #### **volume**: `float` (optional) | CONFIG & SERVICE QUEUE & SERVICE NOTIFY
 Default volume to play the alert_sound and message

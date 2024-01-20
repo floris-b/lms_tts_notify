@@ -13,16 +13,18 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.const import ATTR_ENTITY_ID
 from homeassistant.components.notify import ATTR_MESSAGE
 
-DOMAIN = "lms_tts_notify"
-ATTR_LANGUAGE = "language"
+from . import (
+    DOMAIN,
+    CONF_MEDIA_PLAYER,
+    CONF_TTS_SERVICE,
+    CONF_REPEAT,
+    CONF_VOLUME,
+    CONF_ALERT_SOUND,
+    CONF_DEVICE_GROUP,
+    CONF_PAUSE,
+)
 
-CONF_MEDIA_PLAYER = "media_player"
-CONF_TTS_SERVICE = "tts_service"
-CONF_REPEAT = "repeat"
-CONF_VOLUME = "volume"
-CONF_ALERT_SOUND = "alert_sound"
-CONF_DEVICE_GROUP = "device_group"
-CONF_PAUSE = "pause"
+ATTR_LANGUAGE = "language"
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,6 +34,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Required(CONF_TTS_SERVICE): cv.entity_id,
         vol.Required(CONF_MEDIA_PLAYER): cv.entity_id,
         vol.Required(CONF_DEVICE_GROUP): cv.entity_id,
+        vol.Optional(ATTR_ENTITY_ID): cv.entity_id,
         vol.Optional(ATTR_LANGUAGE): cv.string,
         vol.Optional(CONF_REPEAT, default=1): cv.positive_int,
         vol.Optional(CONF_ALERT_SOUND, default=""): cv.string,
