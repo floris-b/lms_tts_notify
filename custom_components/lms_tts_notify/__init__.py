@@ -25,6 +25,14 @@ CONF_FORCE_PLAY = 'force_play'
 CONF_DEVICE_GROUP = 'device_group'
 CONF_PAUSE = 'pause'
 
+# ChimeTTS options
+CONF_CHIMETTS_OPTION_CHIME_PATH = 'chimetts_chime_path'
+CONF_CHIMETTS_OPTION_END_CHIME_PATH = 'chimetts_end_chime_path'
+CONF_CHIMETTS_OPTION_OFFSET = 'chimetts_offset'
+CONF_CHIMETTS_FINAL_DELAY = 'chimetts_final_delay'
+CONF_CHIMETTS_TTS_SPEED = 'chimetts_tts_speed'
+CONF_CHIMETTS_TTS_PITCH = 'chimetts_tts_pitch'
+
 ATTR_SYNC_GROUP = 'sync_group'
 ATTR_VOLUME = 'volume_level'
 ATTR_POSITION = 'media_position'
@@ -41,6 +49,12 @@ SERVICE_SCHEMA = vol.Schema(
         vol.Optional(CONF_FORCE_PLAY): cv.boolean,
         vol.Optional(CONF_DEVICE_GROUP): cv.entity_id,
         vol.Optional(CONF_PAUSE): cv.positive_float,
+        vol.Optional(CONF_CHIMETTS_OPTION_CHIME_PATH): cv.string,
+        vol.Optional(CONF_CHIMETTS_OPTION_END_CHIME_PATH): cv.string,
+        vol.Optional(CONF_CHIMETTS_OPTION_OFFSET): vol.All(vol.Coerce(int), vol.Range(min=-10000, max=10000)),
+        vol.Optional(CONF_CHIMETTS_FINAL_DELAY): cv.positive_int,
+        vol.Optional(CONF_CHIMETTS_TTS_SPEED): vol.All(vol.Coerce(int), vol.Range(min=1, max=500)),
+        vol.Optional(CONF_CHIMETTS_TTS_PITCH): vol.All(vol.Coerce(int), vol.Range(min=-100, max=100)),
     }
 )
 
@@ -397,7 +411,7 @@ class QueueListener(Thread):
         self._tts_engine = config.get(ATTR_ENTITY_ID)
         self._config = config
         self._sync_group = []
-        _, self._tts_service = split_entity_id(config[CONF_TTS_SERVICE])
+        self._tts_group, self._tts_service = split_entity_id(config[CONF_TTS_SERVICE])
         _, name = split_entity_id(self._media_player)
         self._name = name + '_queue'
         self.skip_save = False
@@ -405,6 +419,13 @@ class QueueListener(Thread):
         self.status = 'idle'
         self._message = ''
         self._device_group = ''
+        self._chimetts_option_chime_path = config.get(CONF_CHIMETTS_OPTION_CHIME_PATH)
+        self._chimetts_option_end_chime_path = config.get(CONF_CHIMETTS_OPTION_END_CHIME_PATH)
+        self._chimetts_option_offset = config.get(CONF_CHIMETTS_OPTION_OFFSET)
+        self._chimetts_final_delay = config.get(CONF_CHIMETTS_FINAL_DELAY)
+        self._chimetts_tts_speed = config.get(CONF_CHIMETTS_TTS_SPEED)
+        self._chimetts_tts_pitch = config.get(CONF_CHIMETTS_TTS_PITCH)
+
 
     def run(self):
         '''Listen to queue events, and play them to mediaplayer'''
@@ -424,6 +445,15 @@ class QueueListener(Thread):
                 CONF_ALERT_SOUND, self._config.get(CONF_ALERT_SOUND)
             )
             self.force_play = event.get(CONF_FORCE_PLAY, False)
+
+            self._chimetts_options = {
+                'chime_path': event.get(CONF_CHIMETTS_OPTION_CHIME_PATH, self._chimetts_option_chime_path),
+                'end_chime_path': event.get(CONF_CHIMETTS_OPTION_END_CHIME_PATH, self._chimetts_option_end_chime_path),
+                'offset': event.get(CONF_CHIMETTS_OPTION_OFFSET, self._chimetts_option_offset),
+                'final_delay': event.get(CONF_CHIMETTS_FINAL_DELAY, self._chimetts_final_delay),
+                'tts_speed': event.get(CONF_CHIMETTS_TTS_SPEED, self._chimetts_tts_speed),
+                'tts_pitch': event.get(CONF_CHIMETTS_TTS_PITCH, self._chimetts_tts_pitch),
+            }
 
             home = self._hass.states.get(self._device_group)
             if not home or home.state == 'home' or self.force_play:
@@ -523,12 +553,24 @@ class QueueListener(Thread):
                         'media_player_entity_id': self._media_player,
                         'message': self._message,
                     }
+                elif 'chime_tts' in self._tts_group:
+
+                    _chimetts_options = {k: v for k, v in self._chimetts_options.items() if v is not None}
+                    _LOGGER.debug('ChimeTTS options: %s', _chimetts_options)
+
+                    service_data = {
+                        'tts_platform': self._tts_engine,
+                        'entity_id': self._media_player,
+                        'message': self._message,
+                        **_chimetts_options,
+                    }
                 else:
                     service_data = {
                         ATTR_ENTITY_ID: self._media_player,
                         'message': self._message,
                     }
 
-                self._hass.services.call('tts', self._tts_service, service_data)
+                _LOGGER.debug('Playing message on %s.%s', self._tts_group, self._tts_service)
+                self._hass.services.call(self._tts_group, self._tts_service, service_data)
                 time.sleep(self._pause)
             self.wait_on_idle()
