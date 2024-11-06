@@ -49,3 +49,200 @@ queue:
       description: Specify which group/enity to track and only play when home
       selector:
         entity:
+
+    chimetts_chime_path:
+      name: "Chime TTS: Chime Path"
+      description: "A preset or custom audio file to be played before TTS audio"
+      example: "custom_components/chime_tts/mp3s/bells.mp3"
+      required: false
+      selector:
+        select:
+          translation_key: "chime_paths"
+          multiple: false
+          custom_value: true
+          mode: dropdown
+          options:
+            - label: "Ba-Dum Tss!"
+              value: "ba_dum_tss"
+            - label: "Bells"
+              value: "bells"
+            - label: "Bells 2"
+              value: "bells_2"
+            - label: "Bright"
+              value: "bright"
+            - label: "Chirp"
+              value: "chirp"
+            - label: "Choir"
+              value: "choir"
+            - label: "Chord"
+              value: "chord"
+            - label: "Classical"
+              value: "classical"
+            - label: "Crickets"
+              value: "crickets"
+            - label: "Ding Dong"
+              value: "ding_dong"
+            - label: "Drum Roll"
+              value: "drumroll"
+            - label: "Dun dun DUUUN!"
+              value: "dun_dun_dun"
+            - label: "Error"
+              value: "error"
+            - label: "Fanfare"
+              value: "fanfare"
+            - label: "Glockenspiel"
+              value: "glockenspiel"
+            - label: "Hail"
+              value: "hail"
+            - label: "Knock"
+              value: "knock"
+            - label: "Marimba"
+              value: "marimba"
+            - label: "Mario Coin"
+              value: "mario_coin"
+            - label: "Microphone Tap"
+              value: "microphone_tap"
+            - label: "Ta-da!"
+              value: "tada"
+            - label: "Toast"
+              value: "toast"
+            - label: "Twenty Four"
+              value: "twenty_four"
+            - label: "Sad Trombone"
+              value: "sad_trombone"
+            - label: "Soft"
+              value: "soft"
+            - label: "Whistle"
+              value: "whistle"
+            - label: "Custom 1"
+              value: "custom_chime_path_1"
+            - label: "Custom 2"
+              value: "custom_chime_path_2"
+            - label: "Custom 3"
+              value: "custom_chime_path_3"
+            - label: "Custom 4"
+              value: "custom_chime_path_4"
+            - label: "Custom 5"
+              value: "custom_chime_path_5"
+    chimetts_end_chime_path:
+      name: "Chime TTS: End Chime Path"
+      description: "A preset or custom audio file to be played after TTS audio"
+      example: "custom_components/chime_tts/mp3s/tada.mp3"
+      required: false
+      selector:
+        select:
+          translation_key: "chime_paths"
+          multiple: false
+          custom_value: true
+          mode: dropdown
+          options:
+            - label: "Ba-Dum Tss!"
+              value: "ba_dum_tss"
+            - label: "Bells"
+              value: "bells"
+            - label: "Bells 2"
+              value: "bells_2"
+            - label: "Bright"
+              value: "bright"
+            - label: "Chirp"
+              value: "chirp"
+            - label: "Choir"
+              value: "choir"
+            - label: "Chord"
+              value: "chord"
+            - label: "Classical"
+              value: "classical"
+            - label: "Crickets"
+              value: "crickets"
+            - label: "Ding Dong"
+              value: "ding_dong"
+            - label: "Drum Roll"
+              value: "drumroll"
+            - label: "Dun dun DUUUN!"
+              value: "dun_dun_dun"
+            - label: "Error"
+              value: "error"
+            - label: "Fanfare"
+              value: "fanfare"
+            - label: "Glockenspiel"
+              value: "glockenspiel"
+            - label: "Hail"
+              value: "hail"
+            - label: "Knock"
+              value: "knock"
+            - label: "Marimba"
+              value: "marimba"
+            - label: "Mario Coin"
+              value: "mario_coin"
+            - label: "Microphone Tap"
+              value: "microphone_tap"
+            - label: "Ta-da!"
+              value: "tada"
+            - label: "Toast"
+              value: "toast"
+            - label: "Twenty Four"
+              value: "twenty_four"
+            - label: "Sad Trombone"
+              value: "sad_trombone"
+            - label: "Soft"
+              value: "soft"
+            - label: "Whistle"
+              value: "whistle"
+            - label: "Custom 1"
+              value: "custom_chime_path_1"
+            - label: "Custom 2"
+              value: "custom_chime_path_2"
+            - label: "Custom 3"
+              value: "custom_chime_path_3"
+            - label: "Custom 4"
+              value: "custom_chime_path_4"
+            - label: "Custom 5"
+              value: "custom_chime_path_5"
+    chimetts_offset:
+      name: "Chime TTS: Offset"
+      description: "Adds a delay between audio segments when value > 0, or overlays audio segments when value < 0."
+      example: 450
+      required: false
+      selector:
+        number:
+          mode: box
+          min: -10000
+          max: 10000
+          step: 10
+          unit_of_measurement: ms
+    chimetts_final_delay:
+      name: "Chime TTS: Final Delay"
+      description: "Final delay (in milliseconds) added to the end of the audio"
+      example: 100
+      required: false
+      selector:
+        number:
+          mode: box
+          min: 0
+          max: 10000
+          step: 1
+          unit_of_measurement: ms
+    chimetts_tts_speed:
+      name: "Chime TTS: TTS Speed"
+      description: "Set the speed of the TTS audio to between 1% and 500% of the original"
+      example: 125
+      required: false
+      selector:
+        number:
+          mode: slider
+          min: 1
+          max: 500
+          step: 5
+          unit_of_measurement: '%'
+    chimetts_tts_pitch:
+      name: "Chime TTS: TTS Pitch"
+      description: "Change the the TTS pitch in semitones. Negative values for lower, positive for higher"
+      example: 3
+      required: false
+      selector:
+        number:
+          mode: slider
+          min: -100
+          max: 100
+          step: 1
+          unit_of_measurement: 'semitones'

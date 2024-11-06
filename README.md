@@ -75,6 +75,24 @@ Default value to repeat the message
 #### **force_play**: `boolean` | SERVICE QUEUE & SERVICE NOTIFY
 Skip check `device_group` state is `home` 
 
+#### **chimetts_chime_path**: `string` | CONFIG & SERVICE QUEUE & SERVICE NOTIFY
+A preset or custom audio file to be played before TTS audio. [ChimeTTS](https://github.com/nimroddolev/chime_tts) option.
+
+#### **chimetts_end_chime_path**: `string` | CONFIG & SERVICE QUEUE & SERVICE NOTIFY
+A preset or custom audio file to be played after TTS audio. [ChimeTTS](https://github.com/nimroddolev/chime_tts) option.
+
+#### **chimetts_offset**: `float` | CONFIG & SERVICE QUEUE & SERVICE NOTIFY
+Delay between audio segments when value > 0, or overlays audio segments when value < 0. [ChimeTTS](https://github.com/nimroddolev/chime_tts) option.
+
+#### **chimetts_final_delay**: `float` | CONFIG & SERVICE QUEUE & SERVICE NOTIFY
+Delay (in milliseconds) added to the end of the audio. [ChimeTTS](https://github.com/nimroddolev/chime_tts) option.
+
+#### **chimetts_tts_speed**: `float` | CONFIG & SERVICE QUEUE & SERVICE NOTIFY
+Speed of the TTS audio. [ChimeTTS](https://github.com/nimroddolev/chime_tts) option.
+
+#### **chimetts_tts_pitch**: `float` | CONFIG & SERVICE QUEUE & SERVICE NOTIFY
+TTS pitch in semitones. [ChimeTTS](https://github.com/nimroddolev/chime_tts) option.
+
 ### SERVICE QUEUE
 ---
 A service `lms_tts_notify.queue` is also added (besides the notify service for each player) for easy use with the automations gui
