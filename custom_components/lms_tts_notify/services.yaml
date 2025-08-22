@@ -49,6 +49,15 @@ queue:
       description: Specify which group/enity to track and only play when home
       selector:
         entity:
+    playback_timeout:
+      name: Maximum message playback duration in seconds
+      description: Specify the maximum waiting time before playback is considered finished or stuck
+      default: 15
+      selector:
+        number:
+          min: 15
+          max: 120
+          step: 5
 
     chimetts_chime_path:
       name: "Chime TTS: Chime Path"

@@ -22,6 +22,7 @@ from . import (
     CONF_ALERT_SOUND,
     CONF_DEVICE_GROUP,
     CONF_PAUSE,
+    CONF_PLAYBACK_TIMEOUT,
 )
 
 ATTR_LANGUAGE = "language"
@@ -40,6 +41,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Optional(CONF_ALERT_SOUND, default=""): cv.string,
         vol.Optional(CONF_VOLUME, default=""): cv.positive_float,
         vol.Optional(CONF_PAUSE, default=0.5): cv.positive_float,
+        vol.Optional(CONF_PLAYBACK_TIMEOUT, default=15): cv.positive_int,
     }
 )
 

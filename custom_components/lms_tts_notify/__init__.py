@@ -24,6 +24,7 @@ CONF_ALERT_SOUND = 'alert_sound'
 CONF_FORCE_PLAY = 'force_play'
 CONF_DEVICE_GROUP = 'device_group'
 CONF_PAUSE = 'pause'
+CONF_PLAYBACK_TIMEOUT = 'playback_timeout'
 
 # ChimeTTS options
 CONF_CHIMETTS_OPTION_CHIME_PATH = 'chimetts_chime_path'
@@ -49,6 +50,7 @@ SERVICE_SCHEMA = vol.Schema(
         vol.Optional(CONF_FORCE_PLAY): cv.boolean,
         vol.Optional(CONF_DEVICE_GROUP): cv.entity_id,
         vol.Optional(CONF_PAUSE): cv.positive_float,
+        vol.Optional(CONF_PLAYBACK_TIMEOUT): cv.positive_int,
         vol.Optional(CONF_CHIMETTS_OPTION_CHIME_PATH): cv.string,
         vol.Optional(CONF_CHIMETTS_OPTION_END_CHIME_PATH): cv.string,
         vol.Optional(CONF_CHIMETTS_OPTION_OFFSET): vol.All(vol.Coerce(int), vol.Range(min=-10000, max=10000)),
@@ -407,6 +409,7 @@ class QueueListener(Thread):
         self._alert_sound = config.get(CONF_ALERT_SOUND)
         self._volume = config.get(CONF_VOLUME)
         self._pause = config.get(CONF_PAUSE)
+        self._playback_timeout = config.get(CONF_PLAYBACK_TIMEOUT)
         self._media_player = config[CONF_MEDIA_PLAYER]
         self._tts_engine = config.get(ATTR_ENTITY_ID)
         self._config = config
@@ -440,6 +443,7 @@ class QueueListener(Thread):
             self._repeat = event.get(CONF_REPEAT, self._config.get(CONF_REPEAT))
             self._volume = event.get(CONF_VOLUME, self._config.get(CONF_VOLUME))
             self._pause = event.get(CONF_PAUSE, self._config.get(CONF_PAUSE))
+            self._playback_timeout = event.get(CONF_PLAYBACK_TIMEOUT, self._config.get(CONF_PLAYBACK_TIMEOUT))
             self._device_group = event.get(CONF_DEVICE_GROUP, self._config.get(CONF_DEVICE_GROUP))
             self._alert_sound = event.get(
                 CONF_ALERT_SOUND, self._config.get(CONF_ALERT_SOUND)
@@ -485,7 +489,7 @@ class QueueListener(Thread):
 
     def wait_on_idle(self):
         '''Wait until player is done playing'''
-        timeout = time.time() + 15  #break is media player is stuck
+        timeout = time.time() + self._playback_timeout  #break is media player is stuck
         while True:
             # Force update status of the media_player
             service_data = {'entity_id': self._media_player}
