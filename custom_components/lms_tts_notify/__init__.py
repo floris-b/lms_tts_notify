@@ -33,7 +33,7 @@ CONF_CHIMETTS_FINAL_DELAY = 'chimetts_final_delay'
 CONF_CHIMETTS_TTS_SPEED = 'chimetts_tts_speed'
 CONF_CHIMETTS_TTS_PITCH = 'chimetts_tts_pitch'
 
-ATTR_SYNC_GROUP = 'sync_group'
+ATTR_SYNC_GROUP = 'group_members'
 ATTR_VOLUME = 'volume_level'
 ATTR_POSITION = 'media_position'
 
