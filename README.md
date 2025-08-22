@@ -75,6 +75,9 @@ Default value to repeat the message
 #### **force_play**: `boolean` | SERVICE QUEUE & SERVICE NOTIFY
 Skip check `device_group` state is `home` 
 
+#### **playback_timeout**: `number` (optional) | CONFIG & SERVICE QUEUE & SERVICE NOTIFY
+Maximum message playback duration in seconds
+
 #### **chimetts_chime_path**: `string` | CONFIG & SERVICE QUEUE & SERVICE NOTIFY
 A preset or custom audio file to be played before TTS audio. [ChimeTTS](https://github.com/nimroddolev/chime_tts) option.
 

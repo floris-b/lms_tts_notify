@@ -75,6 +75,9 @@ Default value to repeat the message
 #### **force_play**: `boolean` | SERVICE QUEUE & SERVICE NOTIFY
 Skip check `device_group` state is `home` 
 
+#### **playback_timeout**: `number` (optional) | CONFIG & SERVICE QUEUE & SERVICE NOTIFY
+Maximum message playback duration in seconds
+
 ### SERVICE QUEUE
 ---
 A service `lms_tts_notify.queue` is also added (besides the notify service for each player) for easy use with the automations gui
