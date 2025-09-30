@@ -33,7 +33,7 @@ CONF_CHIMETTS_FINAL_DELAY = 'chimetts_final_delay'
 CONF_CHIMETTS_TTS_SPEED = 'chimetts_tts_speed'
 CONF_CHIMETTS_TTS_PITCH = 'chimetts_tts_pitch'
 
-ATTR_SYNC_GROUP = 'sync_group'
+ATTR_SYNC_GROUP = 'group_members'
 ATTR_VOLUME = 'volume_level'
 ATTR_POSITION = 'media_position'
 
@@ -418,6 +418,7 @@ class QueueListener(Thread):
         self.force_play = False
         self.status = 'idle'
         self._message = ''
+        self._timeout = 15
         self._device_group = ''
         self._chimetts_option_chime_path = config.get(CONF_CHIMETTS_OPTION_CHIME_PATH)
         self._chimetts_option_end_chime_path = config.get(CONF_CHIMETTS_OPTION_END_CHIME_PATH)
@@ -437,6 +438,7 @@ class QueueListener(Thread):
                 break
             self.status = 'playing'
             self._message = event.get(ATTR_MESSAGE, '').replace('<br>', '')
+            self._timeout = len(self._message.split())
             self._repeat = event.get(CONF_REPEAT, self._config.get(CONF_REPEAT))
             self._volume = event.get(CONF_VOLUME, self._config.get(CONF_VOLUME))
             self._pause = event.get(CONF_PAUSE, self._config.get(CONF_PAUSE))
@@ -485,7 +487,8 @@ class QueueListener(Thread):
 
     def wait_on_idle(self):
         '''Wait until player is done playing'''
-        timeout = time.time() + 15  #break is media player is stuck
+        _LOGGER.debug('Waiting for %s status idle', self._media_player)
+        timeout = time.time() + 5 + self._timeout  #break is media player is stuck
         while True:
             # Force update status of the media_player
             service_data = {'entity_id': self._media_player}
@@ -493,21 +496,23 @@ class QueueListener(Thread):
             time.sleep(0.2)
             state = self._hass.states.get(self._media_player).state
             if time.time() > timeout:
-                _LOGGER.debug('Player stuck')
+                _LOGGER.debug('Player stuck, timeout %ss reached', self._timeout)
                 break
             if state in ['idle', 'paused', 'off', 'unavailable']:
+                _LOGGER.debug('Player %s idle', self._media_player)
                 break
 
     def wait_on_finished(self):
         '''Wait for player to finish'''
         _LOGGER.debug('Waiting for %s to finish', self._media_player)
-        timeout = time.time() + 2
+        timeout = time.time() + 5
         while True:
             service_data = {'entity_id': self._media_player}
             self._hass.services.call('homeassistant', 'update_entity', service_data)
             time.sleep(0.2)
             if self._hass.states.get(self._media_player).state in ['off', 'idle', 'unavailable']:
                 self.status = 'done'
+                _LOGGER.debug('Player: %s done', self._media_player)
                 break
             else:
                 _LOGGER.debug('Player: %s not done', self._media_player)
@@ -523,7 +528,7 @@ class QueueListener(Thread):
         )
         # stop media player before changing volume
         time.sleep(self._pause)
-        _LOGGER.debug('Playing message \'%s\' ', self._message)
+        _LOGGER.debug('Start audio alert')
         # Set alert volume
         if self._volume:
             service_data = {
@@ -541,6 +546,7 @@ class QueueListener(Thread):
                     'command': 'playlist',
                     'parameters': ['resume', self._alert_sound],
                 }
+                _LOGGER.debug('Playing alert sound')
                 self._hass.services.call('squeezebox', 'call_method', service_data)
                 time.sleep(self._pause)
                 self.wait_on_idle()
@@ -570,7 +576,7 @@ class QueueListener(Thread):
                         'message': self._message,
                     }
 
-                _LOGGER.debug('Playing message on %s.%s', self._tts_group, self._tts_service)
+                _LOGGER.debug('Playing message: %s on %s with %s.%s', self._message, self._media_player, self._tts_group, self._tts_service)
                 self._hass.services.call(self._tts_group, self._tts_service, service_data)
-                time.sleep(self._pause)
-            self.wait_on_idle()
+                time.sleep(self._timeout/3)  # give tts some time to generate and download if not in cache
+                self.wait_on_idle()

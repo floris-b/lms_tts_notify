@@ -5,7 +5,7 @@
     "dependencies": ["media_player", "squeezebox"],
     "codeowners": ["@floris-b"],
     "issue_tracker": "https://github.com/floris-b/lms_tts_notify/issues",
-    "after_dependencies": ["media_player", "squuezebox"],
+    "after_dependencies": ["media_player", "squeezebox"],
     "iot_class": "local_push",
-    "version": "0.3.16"
+    "version": "0.3.17"
   }
